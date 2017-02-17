@@ -7,7 +7,6 @@ use curl::easy::{Easy, List};
 use serde_json;
 use serde::Deserialize;
 
-use MyFuture;
 use errors::*;
 
 #[allow(dead_code)]
@@ -27,7 +26,7 @@ pub fn travis_get<T>(sess: &Session,
         format!("Authorization: token {}", token),
         format!("Accept: application/vnd.travis-ci.2+json"),
     ];
-    get_json(sess, &url, &headers)
+    get_json(sess, &url, None, None, &headers)
 }
 
 pub fn travis_post(sess: &Session,
@@ -44,12 +43,48 @@ pub fn travis_post(sess: &Session,
     Box::new(response.map(|_| ()))
 }
 
+pub fn appveyor_get<T>(sess: &Session,
+                       url: &str,
+                       token: &str) -> MyFuture<T>
+    where T: Deserialize + 'static,
+{
+    let headers = vec![
+        format!("Authorization: Bearer {}", token),
+        format!("Accept: application/json"),
+    ];
+
+    get_json(sess,
+             &format!("https://ci.appveyor.com/api{}", url),
+             None,
+             None,
+             &headers)
+}
+
+pub fn github_get<T>(sess: &Session,
+                     url: &str,
+                     user: &str,
+                     password: &str) -> MyFuture<T>
+    where T: Deserialize + 'static,
+{
+    let headers = vec![
+        format!("Accept: application/vnd.github.v3+json"),
+    ];
+
+    get_json(sess,
+             &format!("https://api.github.com{}", url),
+             Some(user),
+             Some(password),
+             &headers)
+}
+
 pub fn get_json<T>(sess: &Session,
                    url: &str,
+                   user: Option<&str>,
+                   pass: Option<&str>,
                    headers: &[String]) -> MyFuture<T>
     where T: Deserialize + 'static
 {
-    let response = get(sess, url, headers);
+    let response = get(sess, url, user, pass, headers);
     let ret = response.and_then(|response| {
         let body = response.body.lock().unwrap();
         let json = try!(str::from_utf8(&body));
@@ -61,12 +96,23 @@ pub fn get_json<T>(sess: &Session,
     Box::new(ret)
 }
 
-pub fn get(sess: &Session, url: &str, headers: &[String]) -> MyFuture<Response> {
+pub fn get(sess: &Session,
+           url: &str,
+           user: Option<&str>,
+           pass: Option<&str>,
+           headers: &[String]) -> MyFuture<Response> {
     let mut handle = Easy::new();
     let mut list = List::new();
     t!(list.append("User-Agent: hello!"));
     for header in headers {
         t!(list.append(header));
+    }
+
+    if let Some(user) = user {
+        t!(handle.username(user));
+    }
+    if let Some(pass) = pass {
+        t!(handle.password(pass));
     }
 
     t!(handle.http_headers(list));

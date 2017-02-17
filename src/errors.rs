@@ -1,6 +1,7 @@
 use std::str;
 use std::io;
 
+use futures::Future;
 use tokio_curl;
 use curl;
 use serde_json;
@@ -18,3 +19,5 @@ error_chain! {
         io::Error, Io;
     }
 }
+
+pub type MyFuture<T> = Box<Future<Item=T, Error=MyError>>;

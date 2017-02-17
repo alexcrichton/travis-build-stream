@@ -21,6 +21,7 @@ pub struct Commit {
     pub branch: String,
     pub sha: String,
     pub compare_url: String,
+    pub committed_at: String,
 }
 
 #[derive(Deserialize, Debug)]
