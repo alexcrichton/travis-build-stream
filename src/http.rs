@@ -89,7 +89,7 @@ pub fn get_json<T>(sess: &Session,
         let body = response.body.lock().unwrap();
         let json = try!(str::from_utf8(&body));
         let ret = try!(serde_json::from_str(json).chain_err(|| {
-            format!("failed to decode: {}", json)
+            format!("failed to decode: {:#?}", json)
         }));
         Ok(ret)
     });

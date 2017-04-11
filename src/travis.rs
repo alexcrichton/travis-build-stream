@@ -6,13 +6,18 @@ pub struct GetBuilds {
     pub commits: Vec<Commit>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Build {
     pub id: u32,
     pub number: String,
     pub state: String,
     pub commit_id: u32,
+    pub repository_id: u32,
     pub job_ids: Vec<u32>,
+    pub pull_request: Option<bool>,
+    pub pull_request_number: Option<u32>,
+    pub started_at: String,
+    pub finished_at: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -40,4 +45,30 @@ pub struct Job {
     pub started_at: String,
     pub finished_at: String,
     pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GetUser {
+    pub user: User,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct User {
+    pub avatar_url: String,
+    pub channels: Vec<String>,
+    pub id: u32,
+    pub name: String,
+    pub login: String,
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GetRepo {
+    pub repo: Repo,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct Repo {
+    pub id: u32,
+    pub slug: String,
 }

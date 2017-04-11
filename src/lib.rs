@@ -18,7 +18,14 @@ extern crate log;
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        Err(e) => {
+            let e: $crate::errors::MyError = e.into();
+            println!("{} failed with {}", stringify!($e), e);
+            for e in e.iter().skip(1) {
+                println!("caused by: {}", e);
+            }
+            panic!("wut");
+        }
     })
 }
 
@@ -42,20 +49,22 @@ pub struct TravisBuilds {
     last_number: Option<String>,
     fetching: Option<MyFuture<travis::GetBuilds>>,
     token: String,
+    repo: String,
 }
 
 impl TravisBuilds {
-    pub fn new(session: Session, token: String) -> TravisBuilds {
+    pub fn new(session: Session, repo: &str, token: String) -> TravisBuilds {
         TravisBuilds {
             session: session,
             pending: Vec::new().into_iter(),
             last_number: None,
             fetching: None,
             token: token,
+            repo: repo.to_string(),
         }
     }
 
-    fn update_with(&mut self, builds: travis::GetBuilds) {
+    fn update_with(&mut self, builds: travis::GetBuilds) -> bool {
         let commits = builds.commits.into_iter()
             .map(|c| (c.id, c))
             .collect::<HashMap<_, _>>();
@@ -70,8 +79,12 @@ impl TravisBuilds {
             b.0.number.cmp(&a.0.number)
         });
 
+        if builds.len() == 0 {
+            return false
+        }
         self.last_number = Some(builds.last().unwrap().0.number.clone());
         self.pending = builds.into_iter();
+        return true
     }
 }
 
@@ -89,13 +102,15 @@ impl Stream for TravisBuilds {
                 Async::Ready(None) => {}
                 Async::Ready(Some(builds)) => {
                     self.fetching = None;
-                    self.update_with(builds);
+                    if !self.update_with(builds) {
+                        return Ok(None.into())
+                    }
                     continue
                 }
                 Async::NotReady => return Ok(Async::NotReady),
             }
 
-            let mut url = "/repos/rust-lang/rust/builds".to_string();
+            let mut url = format!("/repos/{}/builds", self.repo);
             if let Some(ref s) = self.last_number {
                 url.push_str("?after_number=");
                 url.push_str(s);

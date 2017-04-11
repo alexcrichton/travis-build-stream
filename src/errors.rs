@@ -1,7 +1,7 @@
 use std::str;
 use std::io;
 
-use futures::Future;
+use futures::{Stream, Future};
 use tokio_curl;
 use curl;
 use serde_json;
@@ -21,3 +21,15 @@ error_chain! {
 }
 
 pub type MyFuture<T> = Box<Future<Item=T, Error=MyError>>;
+
+pub fn b<'a, F>(f: F) -> Box<Future<Item = F::Item, Error = MyError> + 'a>
+    where F: Future<Error = MyError> + 'a,
+{
+    Box::new(f)
+}
+
+pub fn bs<'a, F>(f: F) -> Box<Stream<Item = F::Item, Error = MyError> + 'a>
+    where F: Stream<Error = MyError> + 'a,
+{
+    Box::new(f)
+}
